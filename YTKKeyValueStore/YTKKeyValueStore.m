@@ -260,7 +260,7 @@ static NSString *const DELETE_ITEMS_WITH_PREFIX_SQL = @"DELETE from %@ where id 
     }
 }
 
-- (id)getDataById:(NSString *)dataId fromTable:(NSString *)tableName {
+- (NSData *)getDataById:(NSString *)dataId fromTable:(NSString *)tableName {
     YTKKeyValueItem * item = [self getYTKKeyValueItemById:dataId fromTable:tableName];
     if (item) {
         return item.itemData;

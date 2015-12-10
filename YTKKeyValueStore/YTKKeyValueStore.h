@@ -50,7 +50,7 @@
 
 - (void)putData:(NSData *)data withId:(NSString *)dataId intoTable:(NSString *)tableName;
 
-- (id)getDataById:(NSString *)dataId fromTable:(NSString *)tableName;
+- (NSData *)getDataById:(NSString *)dataId fromTable:(NSString *)tableName;
 
 - (NSArray *)getAllItemsFromTable:(NSString *)tableName;
 

@@ -70,6 +70,24 @@
     XCTAssertNil(result);
 }
 
+- (void)testSaveData {
+    NSData *data1 = [@"data1" dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *key1 = @"key1";
+    NSData *data2 = [@"data2" dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *key2 = @"key2";
+    [_store putData:data1 withId:key1 intoTable:_tableName];
+    [_store putData:data2 withId:key2 intoTable:_tableName];
+    
+    NSData *result;
+    result = [_store getDataById:key1 fromTable:_tableName];
+    XCTAssertTrue([data1 isEqualToData:result]);
+    result = [_store getDataById:key2 fromTable:_tableName];
+    XCTAssertTrue([data2 isEqualToData:result]);
+    
+    result = [_store getDataById:@"key3" fromTable:_tableName];
+    XCTAssertNil(result);
+}
+
 - (void)testPerformanceExample {
     // This is an example of a performance test case.
     [self measureBlock:^{

@@ -12,6 +12,7 @@
 
 @property (strong, nonatomic) NSString *itemId;
 @property (strong, nonatomic) id itemObject;
+@property (strong, nonatomic) NSData *itemData;
 @property (strong, nonatomic) NSDate *createdTime;
 
 @end
@@ -46,6 +47,10 @@
 - (void)putNumber:(NSNumber *)number withId:(NSString *)numberId intoTable:(NSString *)tableName;
 
 - (NSNumber *)getNumberById:(NSString *)numberId fromTable:(NSString *)tableName;
+
+- (void)putData:(NSData *)data withId:(NSString *)dataId intoTable:(NSString *)tableName;
+
+- (id)getDataById:(NSString *)dataId fromTable:(NSString *)tableName;
 
 - (NSArray *)getAllItemsFromTable:(NSString *)tableName;
 

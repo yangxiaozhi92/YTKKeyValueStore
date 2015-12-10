@@ -45,13 +45,14 @@ static NSString *const CREATE_TABLE_SQL =
 @"CREATE TABLE IF NOT EXISTS %@ ( \
 id TEXT NOT NULL, \
 json TEXT NOT NULL, \
+data BLOB, \
 createdTime TEXT NOT NULL, \
 PRIMARY KEY(id)) \
 ";
 
-static NSString *const UPDATE_ITEM_SQL = @"REPLACE INTO %@ (id, json, createdTime) values (?, ?, ?)";
+static NSString *const UPDATE_ITEM_SQL = @"REPLACE INTO %@ (id, json, data, createdTime) values (?, ?, ?, ?)";
 
-static NSString *const QUERY_ITEM_SQL = @"SELECT json, createdTime from %@ where id = ? Limit 1";
+static NSString *const QUERY_ITEM_SQL = @"SELECT json, data, createdTime from %@ where id = ? Limit 1";
 
 static NSString *const SELECT_ALL_SQL = @"SELECT * from %@";
 
@@ -159,7 +160,7 @@ static NSString *const DELETE_ITEMS_WITH_PREFIX_SQL = @"DELETE from %@ where id 
     NSString * sql = [NSString stringWithFormat:UPDATE_ITEM_SQL, tableName];
     __block BOOL result;
     [_dbQueue inDatabase:^(FMDatabase *db) {
-        result = [db executeUpdate:sql, objectId, jsonString, createdTime];
+        result = [db executeUpdate:sql, objectId, jsonString, nil, createdTime];
     }];
     if (!result) {
         debugLog(@"ERROR, failed to insert/replace into table: %@", tableName);
@@ -181,31 +182,35 @@ static NSString *const DELETE_ITEMS_WITH_PREFIX_SQL = @"DELETE from %@ where id 
     }
     NSString * sql = [NSString stringWithFormat:QUERY_ITEM_SQL, tableName];
     __block NSString * json = nil;
+    __block NSData *data = nil;
     __block NSDate * createdTime = nil;
     [_dbQueue inDatabase:^(FMDatabase *db) {
         FMResultSet * rs = [db executeQuery:sql, objectId];
         if ([rs next]) {
             json = [rs stringForColumn:@"json"];
+            data = [rs dataForColumn:@"data"];
             createdTime = [rs dateForColumn:@"createdTime"];
         }
         [rs close];
     }];
+    
+    YTKKeyValueItem * item = [[YTKKeyValueItem alloc] init];
+    item.itemId = objectId;
+    item.createdTime = createdTime;
+    
     if (json) {
         NSError * error;
         id result = [NSJSONSerialization JSONObjectWithData:[json dataUsingEncoding:NSUTF8StringEncoding]
                                                     options:(NSJSONReadingAllowFragments) error:&error];
         if (error) {
             debugLog(@"ERROR, faild to prase to json");
-            return nil;
         }
-        YTKKeyValueItem * item = [[YTKKeyValueItem alloc] init];
-        item.itemId = objectId;
         item.itemObject = result;
-        item.createdTime = createdTime;
-        return item;
-    } else {
-        return nil;
     }
+    if (data) {
+        item.itemData = data;
+    }
+    return item;
 }
 
 - (void)putString:(NSString *)string withId:(NSString *)stringId intoTable:(NSString *)tableName {
@@ -240,6 +245,30 @@ static NSString *const DELETE_ITEMS_WITH_PREFIX_SQL = @"DELETE from %@ where id 
     return nil;
 }
 
+- (void)putData:(NSData *)data withId:(NSString *)dataId intoTable:(NSString *)tableName {
+    if ([YTKKeyValueStore checkTableName:tableName] == NO) {
+        return;
+    }
+    NSDate * createdTime = [NSDate date];
+    NSString * sql = [NSString stringWithFormat:UPDATE_ITEM_SQL, tableName];
+    __block BOOL result;
+    [_dbQueue inDatabase:^(FMDatabase *db) {
+        result = [db executeUpdate:sql, dataId, @"", data, createdTime];
+    }];
+    if (!result) {
+        debugLog(@"ERROR, failed to insert/replace into table: %@", tableName);
+    }
+}
+
+- (id)getDataById:(NSString *)dataId fromTable:(NSString *)tableName {
+    YTKKeyValueItem * item = [self getYTKKeyValueItemById:dataId fromTable:tableName];
+    if (item) {
+        return item.itemData;
+    } else {
+        return nil;
+    }
+}
+
 - (NSArray *)getAllItemsFromTable:(NSString *)tableName {
     if ([YTKKeyValueStore checkTableName:tableName] == NO) {
         return nil;
@@ -252,6 +281,7 @@ static NSString *const DELETE_ITEMS_WITH_PREFIX_SQL = @"DELETE from %@ where id 
             YTKKeyValueItem * item = [[YTKKeyValueItem alloc] init];
             item.itemId = [rs stringForColumn:@"id"];
             item.itemObject = [rs stringForColumn:@"json"];
+            item.itemData = [rs dataForColumn:@"data"];
             item.createdTime = [rs dateForColumn:@"createdTime"];
             [result addObject:item];
         }
